@@ -1,0 +1,144 @@
+-- Active users
+select distinct num as ConsecutiveNums
+from
+
+(select id,
+        num,
+        lag(num,1) over(order by id) as lag_num,
+        lead(num,1) over(order by id) as lead_num
+from logs) t
+
+where num=lag_num and num=lead_num
+
+--leetcode 1454
+with tmp as
+(select id,
+        login_date,
+        lead(login_date,4) over(partition by id order by login_date)
+                                    as lead_4_date
+from (select distinct * from logins) t)
+
+select distinct a.id, name
+from tmp a
+join accounts b on a.id=b.id
+where datediff(lead_4_date, login_date)=4
+order by a.id
+
+-- Retention
+--leetcode game play analysis
+with install_data as (
+  select player_id, min(event_date) as install_dt
+  from activity
+  group by 1
+)
+,tmp as(
+select a.player_id, a.install_dt,
+      count(1) as total_cnt,
+      count(case when event_date is not null then event_date end) 
+                                          as retention_cnt
+from install_data a
+left join activity b on a.play_id=b.player_id 
+  and install_dt+interval'1' day = event_date
+group by 1,2)
+
+select install_dt, sum(total_cnt) as installs,
+      round(sum(retention_cnt)/sum(total_cnt), 2) as Day1_retention
+from tmp
+group by 1
+
+-- New users
+--leetcode1107
+with min_log as (
+select user_id
+        ,min(activity_date) as min_activity_date
+from Traffic
+where activity='login'
+group by 1
+)
+
+select activity_date as login_date
+        ,count(distinct case when activity_date = min_activity_date 
+                      then a.user_id end) as user_count
+from traffic a
+join min_log b on a.user_id = b.user_id
+where activity_date between date_sub(date('2019-06-30'),
+                  interval 90 day) and date('2019-06-30')
+group by 1
+having (count(distinct case when 
+        activity_date = min_activity_date then a.user_id end) 
+)>0
+
+
+-- Repurchase rate
+--niuke SQL 171
+with tmp as (
+select b.product_id
+        ,a.uid
+        ,count(distinct a.order_id) as cnt
+from tb_order_overall a
+join tb_order_detail b on a.order_id = b.order_id
+join tb_product_info c on b.product_id = c.product_id
+where tag='零食' 
+and datediff((select max(event_date) from tb_order_overall),
+                                        date(event_time)) <90
+group by 1, 2)
+
+select product_id
+, round(count(case when cnt>1 then uid end) / count(uid),2) 
+                                          as repurchase_rate
+from tmp
+group by 1
+order by 2 desc, 1
+limit 3
+
+-- Video play rate
+--niuke SQL 156
+select a.video_id
+        ,round(count(case when timestampdiff(second, 
+                      start_time, end_time) >= durationthen a.id end) 
+                      / cout(a.id) as avg_comp_play_rate,3)
+from tb_user_video_log a
+join tb_video_info b on a.video_id=b.video_id
+where year(start_time)=2021
+group by 1
+order by avg_comp_play_rate desc
+
+-- Fans growth rate
+--niuke SQL 159
+--1 total fans
+with fans as(
+select author
+        ,month
+        ,sum(new_fans-loss_fans) over(partitioin by 
+                        author order by month) as total_fans
+from
+(select author
+        ,substr(start_time,1,7) as month
+        ,count(case when if_follow=1 then uid end) as new_fans
+        ,count(case when if_follow=2 then uid end) as loss_fans
+from tb_user_video_log a
+  join tb_video_info b
+  on a.video_id=b.video_id
+  and year(start_time)=2021
+group by 1,2) t
+)
+--2 growth rate
+,growth as(
+select author
+      ,substr(start_time,1,7) as month
+      ,round((count(case when if_follow=1 then uid end) / 
+            count(case when if_follow=2 then uid end)) / count(uid)
+                                          ,3) as fans_growth_rate
+from tb_user_video_log a
+  join tb_video_info b
+  on a.video_id=b.video_id
+  and year(start_time)=2021
+group by 1,2) 
+
+select a.author
+  ,a.month
+  ,fans_growth_rate
+  ,total_fans
+from growth a
+join fans b on a.author=b.author and a.month=b.month
+order by 1,4
