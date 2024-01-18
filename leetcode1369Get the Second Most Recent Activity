@@ -1,0 +1,14 @@
+## Get the Second Most Recent Activity
+
+#Write an SQL query to show the second most recent activity of each user.
+
+#If the user only has one activity, return that one. 
+
+#A user can't perform more than one activity at the same time. Return the result table in any order.
+
+select t.username, t.activity, t.startDate, t.endDate
+from (select *,
+row_number() over(partition by username order by startDate desc) as 'ranking'
+, count(*) over(partition by username) as 'num'
+from UserActivity) t 
+where t.ranking = 2 or t.num = 1
