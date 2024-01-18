@@ -1,0 +1,13 @@
+select Department
+,name as Employee
+,salary as Salary
+from
+  (select d.name as Department
+  ,e.name
+  ,salary
+  ,dense_rank() over(partition by d.name order by salary desc) rk
+  from enployee e
+  left join department d
+  on e.departmentid=d.id)t
+where rk<=3
+order by Department;
