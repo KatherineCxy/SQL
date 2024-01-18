@@ -15,4 +15,55 @@ select EXTRACT(year from payment_ts) as year
 ,sum(amount) as rev
 from payment
 group by year, mon
-order by year, mon
+order by year, mon;
+
+#7 Daily revenue in June, 2020
+select DATE(payment_ts) as dt
+,sum(amount) as sum
+from payment
+where EXTRACT(month from payment_ts) = '6' and EXTRACT(year from payment_ts)='2020'
+group by dt
+order by dt;
+
+#9 Total number of unique customer for each month
+select EXTRACT(year from rental_ts) as year
+,EXTRACT(month from rental_ts) as mon
+,count(DISTINCT customer_id) as uu_cnt
+from rental
+group by year, mon;
+
+#10 Average customer spend by month
+select EXTRACT(year from payment_ts) as year
+,EXTRACT(month from payment_ts) as mon
+,sum(amount)/count(DISTINCT customet_id) as avg_spend
+from payment
+group by year, mon
+order by year, mon;
+
+#11 Number of high spend customers by month
+select year
+,mon
+,count(DISTINCT customer_id)
+from
+  (select EXTRACT(year from payment_ts) as year
+  ,EXTRACT(month from payment_ts) as mon
+  ,customer_id
+  ,sum(amount)
+  from payment
+  group by year, mon,customer_id) a
+where sum(amount)>20
+group by 1,2;
+
+#12 2nd-highest-salary
+SELECT DISTINCT Salary
+FROM Employee
+ORDER BY Salary DESC
+LIMIT 1 OFFSET 1;
+
+
+
+
+
+
+
+
