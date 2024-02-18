@@ -1,0 +1,10 @@
+# Retweets/rates of each type of video in the past month
+
+select tag
+,sum(if_retweet) as retweet_cut
+,round(avg(if_retweet),3) as retweet_rate
+from tb_user_video_log 
+left join tb_video_info using(video_id)
+where date(start_time) > (select date_sub(max(date(start_time)),interval 30 day) from tb_user_video_log)
+group by tag
+order by retweet_rate desc
