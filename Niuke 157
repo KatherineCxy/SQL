@@ -1,0 +1,15 @@
+# Category of videos whose average playback progress is greater than 60%
+
+with cte as(
+    select tag
+    ,round(avg(if(timestampdiff(second, start_time, end_time)>=duration, 1,timestampdiff(second,start_time, end_time)/duration))*100,2) as avg_play_progress
+    from tb_user_video_log 
+    left join tb_video_info 
+    using(video_id)
+    group by tag 
+    having avg_play_progress > 60
+    order by avg_play_progress desc
+)
+
+select tag, concat(avg_play_progress, '%') as avg_play_progress
+from cte
